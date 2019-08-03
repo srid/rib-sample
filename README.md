@@ -1,6 +1,6 @@
 # rib-sample
 
-Sample site for the Rib static site generator
+Sample site for the [Rib](https://github.com/srid/rib) static site generator
 
 ## Running
 
