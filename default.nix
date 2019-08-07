@@ -1,14 +1,11 @@
-{ pkgs ? import <nixpkgs> {}
-# Cabal project root
-, root ? ./. 
+{
 # Rib library source to use
-, rib ? pkgs.fetchFromGitHub {
-    owner = "srid";
-    repo = "rib";
-    rev = "25875b4af22833bf8e6debdd136a3c56d5fd04b4";
-    sha256 = "0x9blxpvnl02hj76msli60ffbliqrl23v6gp59rsvi9qgyilcfmc";
-  }
+  rib ? builtins.fetchTarball "https://github.com/srid/rib/archive/3f6dc48.tar.gz"
+# Cabal project root
+, root ? ./.
+# Cabal project name
+, name ? "rib-sample"
 , ...
 }:
 
-import rib { inherit pkgs root; }
+import rib { inherit root name; }
