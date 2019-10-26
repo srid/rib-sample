@@ -19,7 +19,7 @@ import Rib.Simple (Page (..))
 import qualified Rib.Simple as Simple
 
 main :: IO ()
-main = App.run $ Simple.buildAction renderPage
+main = App.run "a" "b" $ Simple.buildAction renderPage
 
 renderPage :: Page -> Html ()
 renderPage page = with html_ [lang_ "en"] $ do
