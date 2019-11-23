@@ -16,4 +16,5 @@ executable rib-sample
         shake -any,
         lucid -any,
         text,
-        aeson
+        aeson,
+        path

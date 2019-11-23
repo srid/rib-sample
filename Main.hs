@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Main where
@@ -12,6 +13,7 @@ import Data.Aeson (FromJSON)
 import Data.Maybe
 import Data.Text (Text)
 import GHC.Generics
+import Path
 
 import Clay hiding (title, type_)
 import Development.Shake
@@ -35,18 +37,18 @@ data Meta = Meta
   deriving (Show, Eq, Generic, FromJSON)
 
 main :: IO ()
-main = Rib.run "a" "b" $ do
+main = Rib.run [reldir|a|] [reldir|b|] $ do
   -- Copy over the static files
-  Rib.buildStaticFiles ["static/**"]
+  Rib.buildStaticFiles [[relfile|static/**|]]
   -- Build individual markdown files, generating .html for each.
   --
   -- NOTE: We use TypeApplications to specify the type of the `doc` type
   -- variable, as used in the `Markup doc` constraint in the functions below.
   -- There are currently two possible values: `MMark` (if you choose to use the
   -- `mmark` parser) and `Pandoc` (if using pandoc).
-  posts <- Rib.buildHtmlMulti @MMark "*.md" (renderPage . Page_Doc)
+  posts <- Rib.buildHtmlMulti @MMark [relfile|*.md|] (renderPage . Page_Doc)
   -- Build an index.html linking to the aforementioned files.
-  Rib.buildHtml "index.html" $
+  Rib.buildHtml [relfile|index.html|] $
     renderPage $ Page_Index posts
 
 -- | Render the given page as HTML
