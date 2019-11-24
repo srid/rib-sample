@@ -6,23 +6,20 @@
 
 module Main where
 
-import Prelude hiding (div, (**))
-
+import Clay hiding (title, type_)
 import Control.Monad
 import Data.Aeson (FromJSON)
 import Data.Maybe
 import Data.Text (Text)
-import GHC.Generics
-import Path
-
-import Clay hiding (title, type_)
 import Development.Shake
+import GHC.Generics
 import Lucid
-
+import Path
 import Rib (Document, MMark, Markup)
 import qualified Rib
+import Prelude hiding ((**), div)
 
--- First we shall define two data types to represent our pages. One, the page
+-- First we shall define two datatypes to represent our pages. One, the page
 -- itself. Second, the metadata associated with each document.
 
 -- | A generated page is either an index of documents, or an individual document.
@@ -33,10 +30,11 @@ data Page doc
 -- | Type representing the metadata in our Markdown documents
 --
 -- Note that if a field is not optional (i.e., not Maybe) it must be present.
-data Meta = Meta
-  { title :: Text
-  , description :: Maybe Text
-  }
+data Meta
+  = Meta
+      { title :: Text,
+        description :: Maybe Text
+      }
   deriving (Show, Eq, Generic, FromJSON)
 
 -- | Main entry point to our generator.
@@ -61,11 +59,11 @@ main = Rib.run [reldir|a|] [reldir|b|] $ do
   -- `mmark` parser) and `Pandoc` (if using pandoc).
   posts <- Rib.buildHtmlMulti @MMark [relfile|*.md|] (renderPage . Page_Doc)
   -- Build an index.html linking to the aforementioned files.
-  Rib.buildHtml [relfile|index.html|] $
-    renderPage $ Page_Index posts
-
+  Rib.buildHtml [relfile|index.html|]
+    $ renderPage
+    $ Page_Index posts
   where
-    -- | Define your site HTML here
+    -- Define your site HTML here
     renderPage :: Markup doc => Page doc -> Html ()
     renderPage page = with html_ [lang_ "en"] $ do
       head_ $ do
@@ -74,8 +72,9 @@ main = Rib.run [reldir|a|] [reldir|b|] $ do
           Page_Index _ -> "My website!"
           Page_Doc doc -> toHtml $ title $ Rib.getDocumentMeta doc
         style_ [type_ "text/css"] $ Clay.render pageStyle
-      body_ $
-        with div_ [id_ "thesite"] $ do
+      body_
+        $ with div_ [id_ "thesite"]
+        $ do
           -- Main content
           with a_ [href_ "/"] "Back to Home"
           hr_ []
@@ -91,8 +90,7 @@ main = Rib.run [reldir|a|] [reldir|b|] $ do
               with article_ [class_ "post"] $ do
                 h1_ $ toHtml $ title $ Rib.getDocumentMeta doc
                 Rib.renderDoc doc
-
-    -- | Define your site CSS here
+    -- Define your site CSS here
     pageStyle :: Css
     pageStyle = div # "#thesite" ? do
       marginLeft $ pct 20
