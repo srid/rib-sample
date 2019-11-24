@@ -22,6 +22,9 @@ import Lucid
 import Rib (Document, MMark, Markup)
 import qualified Rib
 
+-- First we shall define two data types to represent our pages. One, the page
+-- itself. Second, the metadata associated with each document.
+
 -- | A generated page is either an index of documents, or an individual document.
 data Page doc
   = Page_Index [Document doc]
@@ -36,6 +39,16 @@ data Meta = Meta
   }
   deriving (Show, Eq, Generic, FromJSON)
 
+-- | Main entry point to our generator.
+--
+-- `Rib.run` handles CLI arguments, and takes three parameters here.
+--
+-- 1. Directory `a`, from which static files will be read.
+-- 2. Directory `b`, under which target files will be generated.
+-- 3. Shake build action to run.
+--
+-- In the shake build action you would expect to use the utility functions
+-- provided by Rib to do the actual generation of your static site.
 main :: IO ()
 main = Rib.run [reldir|a|] [reldir|b|] $ do
   -- Copy over the static files
@@ -51,36 +64,35 @@ main = Rib.run [reldir|a|] [reldir|b|] $ do
   Rib.buildHtml [relfile|index.html|] $
     renderPage $ Page_Index posts
 
--- | Render the given page as HTML
-renderPage :: Markup doc => Page doc -> Html ()
-renderPage page = with html_ [lang_ "en"] $ do
-  head_ $ do
-    meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
-    title_ pageTitle
-    style_ [type_ "text/css"] $ Clay.render pageStyle
-  body_ $
-    with div_ [id_ "thesite"] $ do
-      -- Main content
-      with a_ [href_ "/"] "Back to Home"
-      hr_ []
-      case page of
-        Page_Index docs ->
-          div_ $ forM_ docs $ \doc -> li_ $ do
-            let meta = Rib.getDocumentMeta doc
-            b_ $ with a_ [href_ (Rib.getDocumentUrl doc)] $ toHtml $ title meta
-            case description meta of
-              Just s -> em_ $ small_ $ toHtml s
-              Nothing -> mempty
-        Page_Doc doc ->
-          with article_ [class_ "post"] $ do
-            h1_ $ toHtml $ title $ Rib.getDocumentMeta doc
-            Rib.renderDoc doc
   where
-    pageTitle = case page of
-      Page_Index _ -> "My website!"
-      Page_Doc doc -> toHtml $ title $ Rib.getDocumentMeta doc
+    -- | Define your site HTML here
+    renderPage :: Markup doc => Page doc -> Html ()
+    renderPage page = with html_ [lang_ "en"] $ do
+      head_ $ do
+        meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
+        title_ $ case page of
+          Page_Index _ -> "My website!"
+          Page_Doc doc -> toHtml $ title $ Rib.getDocumentMeta doc
+        style_ [type_ "text/css"] $ Clay.render pageStyle
+      body_ $
+        with div_ [id_ "thesite"] $ do
+          -- Main content
+          with a_ [href_ "/"] "Back to Home"
+          hr_ []
+          case page of
+            Page_Index docs ->
+              div_ $ forM_ docs $ \doc -> li_ $ do
+                let meta = Rib.getDocumentMeta doc
+                b_ $ with a_ [href_ (Rib.getDocumentUrl doc)] $ toHtml $ title meta
+                case description meta of
+                  Just s -> em_ $ small_ $ toHtml s
+                  Nothing -> mempty
+            Page_Doc doc ->
+              with article_ [class_ "post"] $ do
+                h1_ $ toHtml $ title $ Rib.getDocumentMeta doc
+                Rib.renderDoc doc
 
-    -- | CSS
+    -- | Define your site CSS here
     pageStyle :: Css
     pageStyle = div # "#thesite" ? do
       marginLeft $ pct 20
