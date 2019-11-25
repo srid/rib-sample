@@ -17,7 +17,6 @@ import Lucid
 import Path
 import Rib (Document, MMark, Markup)
 import qualified Rib
-import Prelude hiding ((**), div)
 
 -- First we shall define two datatypes to represent our pages. One, the page
 -- itself. Second, the metadata associated with each document.
@@ -75,25 +74,25 @@ main = Rib.run [reldir|a|] [reldir|b|] $ do
       body_
         $ with div_ [id_ "thesite"]
         $ do
-          -- Main content
           with a_ [href_ "/"] "Back to Home"
           hr_ []
           case page of
             Page_Index docs ->
-              div_ $ forM_ docs $ \doc -> li_ $ do
+              div_ $ forM_ docs $ \doc -> with li_ [class_ "links"] $ do
                 let meta = Rib.getDocumentMeta doc
                 b_ $ with a_ [href_ (Rib.getDocumentUrl doc)] $ toHtml $ title meta
-                case description meta of
-                  Just s -> em_ $ small_ $ toHtml s
-                  Nothing -> mempty
+                maybe mempty Rib.renderMarkdown $
+                  description meta
             Page_Doc doc ->
               with article_ [class_ "post"] $ do
                 h1_ $ toHtml $ title $ Rib.getDocumentMeta doc
                 Rib.renderDoc doc
     -- Define your site CSS here
     pageStyle :: Css
-    pageStyle = div # "#thesite" ? do
-      marginLeft $ pct 20
-      marginTop $ em 4
-      "h1" ? do
-        fontSize $ em 2.3
+    pageStyle = "div#thesite" ? do
+      margin (em 4) (pc 20) (em 1) (pc 20)
+      "li.links" ? do
+        marginTop $ em 1
+        "b" ? fontSize (em 1.2)
+        listStyleType none
+        "p" ? sym margin (px 0)
