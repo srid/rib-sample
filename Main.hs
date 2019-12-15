@@ -60,7 +60,7 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
     generateSite = do
       -- Copy over the static files
       Rib.buildStaticFiles [[relfile|static/**|]]
-      -- Build individual markdown files, generating .html for each.
+      -- Build individual markup sources, generating .html for each.
       docs <-
         Rib.buildHtmlMulti patterns $
           renderPage . Page_Doc
@@ -68,7 +68,7 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
       Rib.buildHtml [relfile|index.html|]
         $ renderPage
         $ Page_Index docs
-    -- File patterns to build static pages, and the corresponding markup parser
+    -- File patterns to build, using the associated markup parser
     patterns =
       Map.fromList
         [ ([relfile|*.md|], Some Rib.Markup_MMark)
