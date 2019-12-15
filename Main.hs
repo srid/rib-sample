@@ -9,13 +9,15 @@ module Main where
 import Clay hiding (title, type_)
 import Control.Monad
 import Data.Aeson (FromJSON)
+import qualified Data.Map.Strict as Map
 import Data.Maybe
+import Data.Some (Some (..))
 import Data.Text (Text)
 import Development.Shake
 import GHC.Generics
 import Lucid
 import Path
-import Rib (Document, MMark)
+import Rib (Document)
 import qualified Rib
 
 -- First we shall define two datatypes to represent our pages. One, the page
@@ -27,8 +29,8 @@ import qualified Rib
 -- 1. The first type variable specifies the parser to use: MMark or Pandoc
 -- 2. The second type variable should be your metadata record
 data Page
-  = Page_Index [Document MMark DocMeta]
-  | Page_Doc (Document MMark DocMeta)
+  = Page_Index [Document DocMeta]
+  | Page_Doc (Document DocMeta)
 
 -- | Type representing the metadata in our Markdown documents
 --
@@ -60,12 +62,17 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
       Rib.buildStaticFiles [[relfile|static/**|]]
       -- Build individual markdown files, generating .html for each.
       docs <-
-        Rib.buildHtmlMulti [relfile|*.md|] $
+        Rib.buildHtmlMulti patterns $
           renderPage . Page_Doc
       -- Build an index.html linking to the aforementioned files.
       Rib.buildHtml [relfile|index.html|]
         $ renderPage
         $ Page_Index docs
+    -- File patterns to build static pages, and the corresponding markup parser
+    patterns =
+      Map.fromList
+        [ ([relfile|*.md|], Some Rib.Markup_MMark)
+        ]
     -- Define your site HTML here
     renderPage :: Page -> Html ()
     renderPage page = with html_ [lang_ "en"] $ do

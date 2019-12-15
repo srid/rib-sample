@@ -11,10 +11,12 @@ executable rib-sample
     default-language: Haskell2010
     build-depends:
         base ^>=4.12.0.0,
-        rib ^>=0.5,
-        clay -any,
-        shake -any,
-        lucid -any,
-        text,
         aeson,
-        path
+        clay -any,
+        containers,
+        dependent-sum,
+        lucid -any,
+        path,
+        rib ^>=0.6,
+        shake -any,
+        text,
