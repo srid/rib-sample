@@ -24,4 +24,3 @@ achieved using the following command:
 # Assuming rib is cloned at ../rib
 nix-shell --arg rib ../rib --run 'ghcid -T ":main serve -p 9876"'
 ```
-
