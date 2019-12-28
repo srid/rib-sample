@@ -9,6 +9,10 @@ category: Web
 executable rib-sample
     main-is: Main.hs
     default-language: Haskell2010
+    ghc-options:
+        -Wall
+        -Wincomplete-record-updates
+        -Wincomplete-uni-patterns
     build-depends:
         base ^>=4.12.0.0,
         aeson,
