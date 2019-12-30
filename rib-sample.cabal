@@ -17,7 +17,6 @@ executable rib-sample
         base ^>=4.12.0.0,
         aeson,
         clay -any,
-        containers,
         dependent-sum,
         lucid -any,
         path,
