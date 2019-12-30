@@ -2,23 +2,24 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Main where
 
-import Clay hiding (title, type_)
+import Clay hiding (id, meta, src, title, type_)
 import Control.Monad
-import Data.Aeson (FromJSON)
-import qualified Data.Map.Strict as Map
-import Data.Maybe
-import Data.Some (Some (..))
+import Data.Aeson (FromJSON, fromJSON)
+import qualified Data.Aeson as Aeson
+import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
 import GHC.Generics
 import Lucid
 import Path
-import Rib (Document)
+import Rib (Source)
 import qualified Rib
+import qualified Rib.Parser.MMark as M
 
 -- First we shall define two datatypes to represent our pages. One, the page
 -- itself. Second, the metadata associated with each document.
@@ -29,8 +30,8 @@ import qualified Rib
 -- 1. The first type variable specifies the parser to use: MMark or Pandoc
 -- 2. The second type variable should be your metadata record
 data Page
-  = Page_Index [Document DocMeta]
-  | Page_Doc (Document DocMeta)
+  = Page_Index [Source M.MMark]
+  | Page_Doc (Source M.MMark)
 
 -- | Type representing the metadata in our Markdown documents
 --
@@ -62,17 +63,12 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
       Rib.buildStaticFiles [[relfile|static/**|]]
       -- Build individual markup sources, generating .html for each.
       docs <-
-        Rib.buildHtmlMulti patterns $
+        Rib.buildHtmlMulti [[relfile|*.md|]] M.parseIO $
           renderPage . Page_Doc
       -- Build an index.html linking to the aforementioned files.
       Rib.buildHtml [relfile|index.html|]
         $ renderPage
         $ Page_Index docs
-    -- File patterns to build, using the associated markup parser
-    patterns =
-      Map.fromList
-        [ ([relfile|*.md|], Some Rib.Markup_MMark)
-        ]
     -- Define your site HTML here
     renderPage :: Page -> Html ()
     renderPage page = with html_ [lang_ "en"] $ do
@@ -80,7 +76,7 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
         meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
         title_ $ case page of
           Page_Index _ -> "My website!"
-          Page_Doc doc -> toHtml $ title $ Rib.documentMeta doc
+          Page_Doc doc -> toHtml $ title $ getMeta doc
         style_ [type_ "text/css"] $ Clay.render pageStyle
       body_
         $ with div_ [id_ "thesite"]
@@ -90,14 +86,20 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
           case page of
             Page_Index docs ->
               div_ $ forM_ docs $ \doc -> with li_ [class_ "links"] $ do
-                let meta = Rib.documentMeta doc
-                b_ $ with a_ [href_ (Rib.documentUrl doc)] $ toHtml $ title meta
-                maybe mempty Rib.renderMarkdown $
-                  description meta
+                let meta :: DocMeta = getMeta doc
+                b_ $ with a_ [href_ (Rib.sourceUrl doc)] $ toHtml $ title meta
+                maybe mempty (M.render . either (error . T.unpack) id . M.parsePure "<desc>") $ description meta
             Page_Doc doc ->
               with article_ [class_ "post"] $ do
-                h1_ $ toHtml $ title $ Rib.documentMeta doc
-                Rib.documentHtml doc
+                h1_ $ toHtml $ title $ getMeta doc
+                M.render $ Rib.sourceVal doc
+    -- Get metadata from Markdown YAML block
+    getMeta :: Source M.MMark -> DocMeta
+    getMeta src = case M.projectYaml (Rib.sourceVal src) of
+      Nothing -> error "No YAML metadata"
+      Just val -> case fromJSON val of
+        Aeson.Error e -> error e
+        Aeson.Success v -> v
     -- Define your site CSS here
     pageStyle :: Css
     pageStyle = "div#thesite" ? do
