@@ -21,24 +21,20 @@ import Rib (Source)
 import qualified Rib
 import qualified Rib.Parser.MMark as M
 
--- First we shall define two datatypes to represent our pages. One, the page
--- itself. Second, the metadata associated with each document.
-
--- | A generated page is either an index of documents, or an individual document.
+-- | A generated page corresponds to either an index of sources, or an
+-- individual source.
 --
--- The `Document` type takes two type variables:
--- 1. The first type variable specifies the parser to use: MMark or Pandoc
--- 2. The second type variable should be your metadata record
+-- Each `Source` specifies the parser type to use. Rib provides `MMark` and
+-- `Pandoc`; but you may define your own as well.
 data Page
   = Page_Index [Source M.MMark]
-  | Page_Doc (Source M.MMark)
+  | Page_Single (Source M.MMark)
 
--- | Type representing the metadata in our Markdown documents
---
--- Note that if a field is not optional (i.e., not Maybe) it must be present.
-data DocMeta
-  = DocMeta
+-- | Metadata in our markdown sources. Parsed as JSON.
+data SrcMeta
+  = SrcMeta
       { title :: Text,
+        -- | Description is optional, hence it is a `Maybe`
         description :: Maybe Text
       }
   deriving (Show, Eq, Generic, FromJSON)
@@ -61,14 +57,17 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
     generateSite = do
       -- Copy over the static files
       Rib.buildStaticFiles [[relfile|static/**|]]
-      -- Build individual markup sources, generating .html for each.
-      docs <-
+      -- Build individual sources, generating .html for each.
+      -- The function `buildHtmlMulti` takes the following arguments:
+      -- - File patterns to build
+      -- - Function that will parse the file (here we use mmark)
+      -- - Function that will generate the HTML (see below)
+      srcs <-
         Rib.buildHtmlMulti [[relfile|*.md|]] M.parseIO $
-          renderPage . Page_Doc
+          renderPage . Page_Single
       -- Build an index.html linking to the aforementioned files.
-      Rib.buildHtml [relfile|index.html|]
-        $ renderPage
-        $ Page_Index docs
+      Rib.buildHtml [relfile|index.html|] $
+        renderPage (Page_Index srcs)
     -- Define your site HTML here
     renderPage :: Page -> Html ()
     renderPage page = with html_ [lang_ "en"] $ do
@@ -76,7 +75,7 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
         meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
         title_ $ case page of
           Page_Index _ -> "My website!"
-          Page_Doc doc -> toHtml $ title $ getMeta doc
+          Page_Single src -> toHtml $ title $ getMeta src
         style_ [type_ "text/css"] $ Clay.render pageStyle
       body_
         $ with div_ [id_ "thesite"]
@@ -84,21 +83,21 @@ main = Rib.run [reldir|a|] [reldir|b|] generateSite
           with a_ [href_ "/"] "Back to Home"
           hr_ []
           case page of
-            Page_Index docs ->
-              div_ $ forM_ docs $ \doc -> with li_ [class_ "links"] $ do
-                let meta :: DocMeta = getMeta doc
-                b_ $ with a_ [href_ (Rib.sourceUrl doc)] $ toHtml $ title meta
+            Page_Index srcs ->
+              div_ $ forM_ srcs $ \src -> with li_ [class_ "links"] $ do
+                let meta = getMeta src
+                b_ $ with a_ [href_ (Rib.sourceUrl src)] $ toHtml $ title meta
                 maybe mempty (M.render . either (error . T.unpack) id . M.parsePure "<desc>") $ description meta
-            Page_Doc doc ->
+            Page_Single src ->
               with article_ [class_ "post"] $ do
-                h1_ $ toHtml $ title $ getMeta doc
-                M.render $ Rib.sourceVal doc
+                h1_ $ toHtml $ title $ getMeta src
+                M.render $ Rib.sourceVal src
     -- Get metadata from Markdown YAML block
-    getMeta :: Source M.MMark -> DocMeta
+    getMeta :: Source M.MMark -> SrcMeta
     getMeta src = case M.projectYaml (Rib.sourceVal src) of
       Nothing -> error "No YAML metadata"
       Just val -> case fromJSON val of
-        Aeson.Error e -> error e
+        Aeson.Error e -> error $ "JSON error: " <> e
         Aeson.Success v -> v
     -- Define your site CSS here
     pageStyle :: Css
