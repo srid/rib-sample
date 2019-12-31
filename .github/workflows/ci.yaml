@@ -14,7 +14,3 @@ jobs:
     - uses: cachix/cachix-action@v3  # This also runs nix-build.
       with:
         name: srid
-        # Without a signing key, cache will be only used, not pushed.
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-        # Only needed for private caches
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
