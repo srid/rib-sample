@@ -2,10 +2,26 @@
 
 Sample site for the [Rib](https://github.com/srid/rib) static site generator
 
+## Prerequisites
+
+First, install the [Nix package manager](https://nixos.org/nix/):
+
+``` bash
+bash <(curl https://nixos.org/nix/install)
+```
+
+Optionally, enable the [Nix cache](https://srid.cachix.org/) if you would like to speed up local builds:
+
+``` bash
+# If you do not already have cachix, install it:
+nix-env -iA cachix -f https://cachix.org/api/v1/install
+# Enable nix cache for rib
+cachix use srid
+```
+
 ## Running
 
-First, install the [Nix package manager](https://nixos.org/nix/). Then simply
-run:
+To build and run the site:
 
 ```bash
 nix-shell --run 'ghcid -T main'
