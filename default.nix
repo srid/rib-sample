@@ -1,6 +1,8 @@
-{
+let
+  ribRevision = "e9a326f";
+in {
 # Rib library source to use
-  rib ? builtins.fetchTarball "https://github.com/srid/rib/archive/eadcdfd.tar.gz"
+  rib ? builtins.fetchTarball "https://github.com/srid/rib/archive/${ribRevision}.tar.gz"
 # Cabal project root
 , root ? ./.
 # Cabal project name
