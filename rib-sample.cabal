@@ -19,6 +19,6 @@ executable rib-sample
         clay -any,
         lucid -any,
         path,
-        rib ^>=0.6,
+        rib ^>=0.7,
         shake -any,
         text,
