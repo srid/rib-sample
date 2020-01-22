@@ -12,6 +12,6 @@ jobs:
       with:
         name: srid
     - name: Generate site
-      run: $(nix-build)/bin/open-editions-org generate --full
+      run: $(nix-build)/bin/rib-sample generate --full
     - name: GitHub Pages Deploy
       uses: maxheld83/ghpages@v0.2.1
