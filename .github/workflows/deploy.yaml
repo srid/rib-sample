@@ -4,13 +4,14 @@ on:
   push:
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: cachix/install-nix-action@v6
     - uses: cachix/cachix-action@v3  # This also runs nix-build.
       with:
         name: srid
+    - name: Generate site
+      run: $(nix-build)/bin/open-editions-org generate --full
+    - name: GitHub Pages Deploy
+      uses: maxheld83/ghpages@v0.2.1
