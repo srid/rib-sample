@@ -18,7 +18,7 @@ import Development.Shake
 import GHC.Generics
 import Lucid
 import Path
-import Rib (MMark, Source)
+import Rib (MMark, Target)
 import qualified Rib
 import qualified Rib.Parser.MMark as MMark
 
@@ -27,8 +27,8 @@ import qualified Rib.Parser.MMark as MMark
 -- Each `Source` specifies the parser type to use. Rib provides `MMark` and
 -- `Pandoc`; but you may define your own as well.
 data Page
-  = Page_Index [Source MMark]
-  | Page_Single (Source MMark)
+  = Page_Index [Target (Path Rel File) MMark]
+  | Page_Single (Target (Path Rel File) MMark)
 
 -- | Main entry point to our generator.
 --
@@ -49,13 +49,18 @@ generateSite = do
   -- Copy over the static files
   Rib.buildStaticFiles [[relfile|static/**|]]
   -- Build individual sources, generating .html for each.
-  -- The function `buildHtmlMulti` takes the following arguments:
-  -- - Function that will parse the file (here we use mmark)
-  -- - File patterns to build
-  -- - Function that will generate the HTML (see below)
+  --
+  -- `Rib.forEvery` iterates over a pattern of files.
+  -- For each such file, we use `Rib.loadTarget`, passing it a parser function
+  -- (`MMark.parse` in this case), to load the source file. This returns a
+  -- `Target` type can be used in rendering stage.
+  -- Finally, `Rib.writeTarget` is called to write the rendered HTML.
   srcs <-
-    Rib.forEvery [[relfile|*.md|]] $ \srcPath ->
-      Rib.buildHtml srcPath MMark.parse $ renderPage . Page_Single
+    Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
+      targetPath <- liftIO $ replaceExtension ".html" srcPath
+      target <- Rib.loadTarget srcPath MMark.parse targetPath
+      Rib.writeTarget target $ renderPage . Page_Single
+      pure target
   -- Write an index.html linking to the aforementioned files.
   Rib.writeHtml [relfile|index.html|] $
     renderPage (Page_Index srcs)
@@ -77,12 +82,12 @@ renderPage page = with html_ [lang_ "en"] $ do
         Page_Index srcs -> div_ $ forM_ srcs $ \src ->
           with li_ [class_ "pages"] $ do
             let meta = getMeta src
-            b_ $ with a_ [href_ (Rib.sourceUrl src)] $ toHtml $ title meta
+            b_ $ with a_ [href_ (Rib.targetUrl src)] $ toHtml $ title meta
             maybe mempty renderMarkdown $ description meta
         Page_Single src ->
           with article_ [class_ "post"] $ do
             h1_ $ toHtml $ title $ getMeta src
-            MMark.render $ Rib.sourceVal src
+            MMark.render $ Rib.targetVal src
   where
     renderMarkdown =
       MMark.render . either (error . T.unpack) id . MMark.parsePure "<none>"
@@ -109,8 +114,8 @@ data SrcMeta
   deriving (Show, Eq, Generic, FromJSON)
 
 -- | Get metadata from Markdown's YAML block
-getMeta :: Source MMark -> SrcMeta
-getMeta src = case MMark.projectYaml (Rib.sourceVal src) of
+getMeta :: Target src MMark -> SrcMeta
+getMeta src = case MMark.projectYaml (Rib.targetVal src) of
   Nothing -> error "No YAML metadata"
   Just val -> case fromJSON val of
     Aeson.Error e -> error $ "JSON error: " <> e
