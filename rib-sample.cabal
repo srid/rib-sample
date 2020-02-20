@@ -18,6 +18,7 @@ executable rib-sample
         base,
         aeson,
         clay,
+        dhall,
         lucid,
         path,
         rib ^>=0.7,

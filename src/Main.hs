@@ -3,6 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Main where
@@ -15,11 +17,14 @@ import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
+import Dhall (FromDhall)
+import Dhall.TH
 import GHC.Generics
 import Lucid
 import Path
 import Rib (MMark, Target)
 import qualified Rib
+import qualified Rib.Parser.Dhall as Dhall
 import qualified Rib.Parser.MMark as MMark
 
 -- | This will be our type representing generated pages.
@@ -29,6 +34,16 @@ import qualified Rib.Parser.MMark as MMark
 data Page
   = Page_Index [Target (Path Rel File) MMark]
   | Page_Single (Target (Path Rel File) MMark)
+
+makeHaskellTypes
+  [ SingleConstructor "Config" "Config" "./src-dhall/Config.dhall"
+  ]
+
+deriving instance Generic Config
+
+deriving instance Show Config
+
+deriving instance FromDhall Config
 
 -- | Main entry point to our generator.
 --
@@ -48,6 +63,11 @@ generateSite :: Action ()
 generateSite = do
   -- Copy over the static files
   Rib.buildStaticFiles [[relfile|static/**|]]
+  -- Get the site config
+  config :: Config <-
+    Rib.readSource
+      (Dhall.parse [[relfile|src-dhall/Config.dhall|]])
+      [relfile|config.dhall|]
   -- Build individual sources, generating .html for each.
   --
   -- `Rib.forEvery` iterates over a pattern of files.
@@ -59,19 +79,19 @@ generateSite = do
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
       targetPath <- liftIO $ replaceExtension ".html" srcPath
       target <- Rib.loadTarget srcPath MMark.parse targetPath
-      Rib.writeTarget target $ renderPage . Page_Single
+      Rib.writeTarget target $ renderPage config . Page_Single
       pure target
   -- Write an index.html linking to the aforementioned files.
   Rib.writeHtml [relfile|index.html|] $
-    renderPage (Page_Index srcs)
+    renderPage config (Page_Index srcs)
 
 -- | Define your site HTML here
-renderPage :: Page -> Html ()
-renderPage page = with html_ [lang_ "en"] $ do
+renderPage :: Config -> Page -> Html ()
+renderPage config page = with html_ [lang_ "en"] $ do
   head_ $ do
     meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
     title_ $ case page of
-      Page_Index _ -> "My website!"
+      Page_Index _ -> toHtml $ siteTitle config
       Page_Single src -> toHtml $ title $ getMeta src
     style_ [type_ "text/css"] $ C.render pageStyle
   body_ $ do
@@ -79,11 +99,13 @@ renderPage page = with html_ [lang_ "en"] $ do
       with div_ [class_ "header"] $
         with a_ [href_ "/"] "Back to Home"
       case page of
-        Page_Index srcs -> div_ $ forM_ srcs $ \src ->
-          with li_ [class_ "pages"] $ do
-            let meta = getMeta src
-            b_ $ with a_ [href_ (Rib.targetUrl src)] $ toHtml $ title meta
-            maybe mempty renderMarkdown $ description meta
+        Page_Index srcs -> do
+          h1_ $ toHtml $ siteTitle config
+          div_ $ forM_ srcs $ \src ->
+            with li_ [class_ "pages"] $ do
+              let meta = getMeta src
+              b_ $ with a_ [href_ (Rib.targetUrl src)] $ toHtml $ title meta
+              maybe mempty renderMarkdown $ description meta
         Page_Single src ->
           with article_ [class_ "post"] $ do
             h1_ $ toHtml $ title $ getMeta src
