@@ -35,6 +35,10 @@ data Page
   = Page_Index [Target (Path Rel File) MMark]
   | Page_Single (Target (Path Rel File) MMark)
 
+-- | The "Config" type generated from the Dhall type.
+--
+-- Use `Rib.Parser.Dhall` to parse it (see below). We will need Generic and
+-- FromDhall instances for it.
 makeHaskellTypes
   [ SingleConstructor "Config" "Config" "./src-dhall/Config.dhall"
   ]
@@ -63,7 +67,7 @@ generateSite :: Action ()
 generateSite = do
   -- Copy over the static files
   Rib.buildStaticFiles [[relfile|static/**|]]
-  -- Get the site config
+  -- Read the site config
   config :: Config <-
     Rib.readSource
       (Dhall.parse [[relfile|src-dhall/Config.dhall|]])
