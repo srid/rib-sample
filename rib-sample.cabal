@@ -8,17 +8,18 @@ category: Web
 
 executable rib-sample
     main-is: Main.hs
+    hs-source-dirs: src
     default-language: Haskell2010
     ghc-options:
         -Wall
         -Wincomplete-record-updates
         -Wincomplete-uni-patterns
     build-depends:
-        base ^>=4.12.0.0,
+        base,
         aeson,
-        clay -any,
-        lucid -any,
+        clay,
+        lucid,
         path,
         rib ^>=0.7,
-        shake -any,
+        shake,
         text,
