@@ -41,7 +41,7 @@ data Page
 -- In the shake build action you would expect to use the utility functions
 -- provided by Rib to do the actual generation of your static site.
 main :: IO ()
-main = Rib.run [reldir|a|] [reldir|b|] generateSite
+main = Rib.run [reldir|content|] [reldir|dest|] generateSite
 
 -- | Shake action for generating the static site
 generateSite :: Action ()
