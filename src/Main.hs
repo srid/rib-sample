@@ -1,7 +1,10 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -11,17 +14,19 @@ module Main where
 
 import Clay ((?), Css, em, pc, px, sym)
 import qualified Clay as C
-import Control.Monad
+import Control.Monad (forM_)
 import Data.Aeson (FromJSON, fromJSON)
 import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
 import Data.Text (Text)
+import qualified Data.Text.Lazy as TL
 import Development.Shake
 import Dhall (FromDhall)
 import Dhall.TH
 import GHC.Generics
 import Lucid
 import Path
+import Prelude.HTML.Do
 import Rib (MMark, Target)
 import qualified Rib
 import qualified Rib.Parser.Dhall as Dhall
@@ -103,20 +108,33 @@ renderPage config page = with html_ [lang_ "en"] $ do
       with div_ [class_ "header"] $
         with a_ [href_ "/"] "Back to Home"
       case page of
-        Page_Index srcs -> do
-          h1_ $ toHtml $ siteTitle config
-          div_ $ forM_ srcs $ \src ->
-            with li_ [class_ "pages"] $ do
+        Page_Index srcs -> htmlDo2Lucid $ do
+          #h1 $ raw $ siteTitle config
+          #div $ forM_ srcs $ \src ->
+            #li [#class "pages"] $ do
               let meta = getMeta src
-              b_ $ with a_ [href_ (Rib.targetUrl src)] $ toHtml $ title meta
+              #b $ #a [#href_ (Rib.targetUrl src)] $ raw $ title meta
               maybe mempty renderMarkdown $ description meta
         Page_Single src ->
-          with article_ [class_ "post"] $ do
-            h1_ $ toHtml $ title $ getMeta src
-            MMark.render $ Rib.targetVal src
+          htmlDo2Lucid $ articleHtml src
   where
     renderMarkdown =
-      MMark.render . either (error . T.unpack) id . MMark.parsePure "<none>"
+      mmarkRender . either (error . T.unpack) id . MMark.parsePure "<none>"
+
+articleHtml :: Target (Path Rel File) MMark -> HTML
+articleHtml src = html do
+  #article [#class "post"] do
+    #h1 $ raw $ title $ getMeta src
+    mmarkRender $ Rib.targetVal src
+
+mmarkRender =
+  -- Integrate with Rib (cf. MMark.render)
+  raw . TL.toStrict . Lucid.renderText . MMark.render
+
+-- | Convert html-do's Html to Lucid's Html
+htmlDo2Lucid :: HTML -> Html ()
+htmlDo2Lucid =
+  toHtmlRaw . htmlToText
 
 -- | Define your site CSS here
 pageStyle :: Css
