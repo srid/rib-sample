@@ -15,4 +15,14 @@ in {
 , ...
 }:
 
-import rib { inherit root name; }
+let 
+  fetchGL = owner: repo: rev:
+    builtins.fetchTarball ("https://gitlab.com/" + owner + "/" + repo + "/-/archive/" + rev + "/" + repo + "-" + rev + ".tar.gz");
+  source-overrides = {
+    html-do = fetchGL "sridca" "html-do" "5ad00823e6fbf81f83c260c7c2fb0c8a4c37a2cd";
+    # html-do = ../html-do;
+    
+  };
+in import rib { 
+  inherit root name source-overrides; 
+}

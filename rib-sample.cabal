@@ -24,3 +24,4 @@ executable rib-sample
         rib ^>=0.7,
         shake,
         text,
+        html-do,
