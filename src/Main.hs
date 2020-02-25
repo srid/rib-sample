@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -17,7 +18,6 @@ import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
-import Dhall (FromDhall)
 import Dhall.TH
 import GHC.Generics
 import Lucid
@@ -43,11 +43,7 @@ makeHaskellTypes
   [ SingleConstructor "Config" "Config" "./src-dhall/Config.dhall"
   ]
 
-deriving instance Generic Config
-
 deriving instance Show Config
-
-deriving instance FromDhall Config
 
 -- | Main entry point to our generator.
 --
