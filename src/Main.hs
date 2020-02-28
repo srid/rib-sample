@@ -19,7 +19,6 @@ import Data.Aeson (FromJSON, fromJSON)
 import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
 import Data.Text (Text)
-import qualified Data.Text.Lazy as TL
 import Development.Shake
 import Dhall.TH
 import GHC.Generics (Generic)
@@ -39,10 +38,13 @@ data Route a where
   Route_Index :: Route ()
   Route_Article :: ArticleRoute a -> Route a
 
+-- | You may even have sub routes.
 data ArticleRoute a where
   ArticleRoute_Index :: ArticleRoute [(Route MMark, MMark)]
   ArticleRoute_Article :: Path Rel File -> ArticleRoute MMark
 
+-- | The `IsRoute` instance allows us to determine the target .html path for
+-- each route. This affects what `routeUrl` will return.
 instance IsRoute Route where
   routeFile = \case
     Route_Index ->
@@ -84,19 +86,17 @@ generateSite = do
     Dhall.parse
       [[relfile|src-dhall/Config.dhall|]]
       [relfile|config.dhall|]
-  let renderRoute :: Route a -> a -> TL.Text
-      renderRoute r a = Lucid.renderText $ renderPage config r a
+  let writeHtmlRoute :: Route a -> a -> Action ()
+      writeHtmlRoute r = writeRoute r . Lucid.renderText . renderPage config r
   -- Build individual sources, generating .html for each.
   articles <-
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
       let r = Route_Article $ ArticleRoute_Article srcPath
       doc <- MMark.parse srcPath
-      writeRoute r $ renderRoute r doc
+      writeHtmlRoute r doc
       pure (r, doc)
-  -- Write an index.html linking to all articles.
-  let articlesRoute = Route_Article ArticleRoute_Index
-  writeRoute articlesRoute $ renderRoute articlesRoute articles
-  writeRoute Route_Index $ renderRoute Route_Index ()
+  writeHtmlRoute (Route_Article ArticleRoute_Index) articles
+  writeHtmlRoute Route_Index ()
 
 -- | Define your site HTML here
 renderPage :: Config -> Route a -> a -> Html ()
@@ -111,12 +111,12 @@ renderPage config route val = with html_ [lang_ "en"] $ do
         with a_ [href_ "/"] "Back to Home"
       h1_ routeTitle
       case route of
-        Route_Index -> do
+        Route_Index ->
           p_ $ do
             "This site is work in progress. Meanwhile visit the "
             with a_ [href_ $ routeUrl $ Route_Article ArticleRoute_Index] "articles"
             " page."
-        Route_Article ArticleRoute_Index -> do
+        Route_Article ArticleRoute_Index ->
           div_ $ forM_ val $ \(r, src) ->
             with li_ [class_ "pages"] $ do
               let meta = getMeta src
