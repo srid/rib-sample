@@ -22,7 +22,7 @@ import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
 import Dhall.TH
-import GHC.Generics
+import GHC.Generics (Generic)
 import Lucid
 import Path
 import Rib (MMark, Target)
@@ -41,7 +41,7 @@ data Page
 
 data Route a where
   Route_Article :: Path Rel File -> Route MMark
-  Route_Index :: Route [Route MMark]
+  Route_Index :: Route [(Route MMark, MMark)]
 
 instance IsRoute Route where
   routeFile = \case
@@ -90,42 +90,47 @@ generateSite = do
   -- (`MMark.parse` in this case), to load the source file. This returns a
   -- `Target` type can be used in rendering stage.
   -- Finally, `Rib.writeTarget` is called to write the rendered HTML.
-  srcs <-
+  articles <-
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
-      targetPath <- liftIO $ replaceExtension ".html" srcPath
-      target <- Rib.loadTarget srcPath MMark.parse targetPath
-      Rib.writeTarget target $ renderPage config . Page_Single
-      pure target
+      doc <- Rib.readSource MMark.parse srcPath
+      let r = Route_Article srcPath
+      tgtPath <- liftIO $ routeFile $ Some r
+      Rib.writeHtml tgtPath $ renderPage config $ r :/ doc
+      pure (r, doc)
   -- Write an index.html linking to the aforementioned files.
-  Rib.writeHtml [relfile|index.html|] $
-    renderPage config (Page_Index srcs)
+  indexTgt <- liftIO $ routeFile $ Some Route_Index
+  Rib.writeHtml indexTgt
+    $ renderPage config
+    $ Route_Index :/ articles
 
 -- | Define your site HTML here
-renderPage :: Config -> Page -> Html ()
-renderPage config page = with html_ [lang_ "en"] $ do
+renderPage :: Config -> R Route -> Html ()
+renderPage config route = with html_ [lang_ "en"] $ do
   head_ $ do
     meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
-    title_ $ case page of
-      Page_Index _ -> toHtml $ siteTitle config
-      Page_Single src -> toHtml $ title $ getMeta src
+    title_ $ routeTitle route
     style_ [type_ "text/css"] $ C.render pageStyle
   body_ $ do
     with div_ [id_ "thesite"] $ do
       with div_ [class_ "header"] $
         with a_ [href_ "/"] "Back to Home"
-      case page of
-        Page_Index srcs -> do
+      case route of
+        Route_Index :/ srcs -> do
           h1_ $ toHtml $ siteTitle config
-          div_ $ forM_ srcs $ \src ->
+          div_ $ forM_ srcs $ \(r, src) ->
             with li_ [class_ "pages"] $ do
               let meta = getMeta src
-              b_ $ with a_ [href_ (Rib.targetUrl src)] $ toHtml $ title meta
+              b_ $ with a_ [href_ (routeUrl $ Some r)] $ toHtml $ title meta
               maybe mempty renderMarkdown $ description meta
-        Page_Single src ->
+        Route_Article _ :/ src ->
           with article_ [class_ "post"] $ do
             h1_ $ toHtml $ title $ getMeta src
-            MMark.render $ Rib.targetVal src
+            MMark.render src
   where
+    routeTitle :: R Route -> Html ()
+    routeTitle = \case
+      Route_Index :/ _ -> toHtml $ siteTitle config
+      Route_Article _ :/ src -> toHtml $ title $ getMeta src
     renderMarkdown =
       MMark.render . either (error . T.unpack) id . MMark.parsePure "<none>"
 
@@ -151,8 +156,8 @@ data SrcMeta
   deriving (Show, Eq, Generic, FromJSON)
 
 -- | Get metadata from Markdown's YAML block
-getMeta :: Target src MMark -> SrcMeta
-getMeta src = case MMark.projectYaml (Rib.targetVal src) of
+getMeta :: MMark -> SrcMeta
+getMeta src = case MMark.projectYaml src of
   Nothing -> error "No YAML metadata"
   Just val -> case fromJSON val of
     Aeson.Error e -> error $ "JSON error: " <> e
