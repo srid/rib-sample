@@ -17,7 +17,6 @@ import qualified Clay as C
 import Control.Monad
 import Data.Aeson (FromJSON, fromJSON)
 import qualified Data.Aeson as Aeson
-import Data.Some
 import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
@@ -25,20 +24,16 @@ import Dhall.TH
 import GHC.Generics (Generic)
 import Lucid
 import Path
-import Rib (MMark, Target)
+import Rib (IsRoute, MMark)
 import qualified Rib
 import qualified Rib.Parser.Dhall as Dhall
 import qualified Rib.Parser.MMark as MMark
-import Route
+import Rib.Route
 
--- | This will be our type representing generated pages.
+-- | Route corresponding to each generated static page.
 --
--- Each `Source` specifies the parser type to use. Rib provides `MMark` and
--- `Pandoc`; but you may define your own as well.
-data Page
-  = Page_Index [Target (Path Rel File) MMark]
-  | Page_Single (Target (Path Rel File) MMark)
-
+-- The `a` parameter specifies the data (typically Markdown document) used to
+-- generated the final page text.
 data Route a where
   Route_Article :: Path Rel File -> Route MMark
   Route_Index :: Route [(Route MMark, MMark)]
@@ -52,23 +47,20 @@ instance IsRoute Route where
 
 -- | The "Config" type generated from the Dhall type.
 --
--- Use `Rib.Parser.Dhall` to parse it (see below). We will need Generic and
--- FromDhall instances for it.
+-- Use `Rib.Parser.Dhall` to parse it (see below).
 makeHaskellTypes
   [ SingleConstructor "Config" "Config" "./src-dhall/Config.dhall"
   ]
-
-deriving instance Show Config
 
 -- | Main entry point to our generator.
 --
 -- `Rib.run` handles CLI arguments, and takes three parameters here.
 --
--- 1. Directory `a`, from which static files will be read.
--- 2. Directory `b`, under which target files will be generated.
+-- 1. Directory `content`, from which static files will be read.
+-- 2. Directory `dest`, under which target files will be generated.
 -- 3. Shake action to run.
 --
--- In the shake build action you would expect to use the utility functions
+-- In the shake action you would expect to use the utility functions
 -- provided by Rib to do the actual generation of your static site.
 main :: IO ()
 main = Rib.run [reldir|content|] [reldir|dest|] generateSite
@@ -80,28 +72,19 @@ generateSite = do
   Rib.buildStaticFiles [[relfile|static/**|]]
   -- Read the site config
   config :: Config <-
-    Rib.readSource
-      (Dhall.parse [[relfile|src-dhall/Config.dhall|]])
+    Dhall.parse
+      [[relfile|src-dhall/Config.dhall|]]
       [relfile|config.dhall|]
+  let renderRoute = Lucid.renderText . renderPage config
   -- Build individual sources, generating .html for each.
-  --
-  -- `Rib.forEvery` iterates over a pattern of files.
-  -- For each such file, we use `Rib.loadTarget`, passing it a parser function
-  -- (`MMark.parse` in this case), to load the source file. This returns a
-  -- `Target` type can be used in rendering stage.
-  -- Finally, `Rib.writeTarget` is called to write the rendered HTML.
   articles <-
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
-      doc <- Rib.readSource MMark.parse srcPath
       let r = Route_Article srcPath
-      tgtPath <- liftIO $ routeFile $ Some r
-      Rib.writeHtml tgtPath $ renderPage config $ r :/ doc
+      doc <- MMark.parse srcPath
+      writeRoute r $ renderRoute $ r :/ doc
       pure (r, doc)
-  -- Write an index.html linking to the aforementioned files.
-  indexTgt <- liftIO $ routeFile $ Some Route_Index
-  Rib.writeHtml indexTgt
-    $ renderPage config
-    $ Route_Index :/ articles
+  -- Write an index.html linking to all articles.
+  writeRoute Route_Index $ renderRoute $ Route_Index :/ articles
 
 -- | Define your site HTML here
 renderPage :: Config -> R Route -> Html ()
@@ -120,7 +103,7 @@ renderPage config route = with html_ [lang_ "en"] $ do
           div_ $ forM_ srcs $ \(r, src) ->
             with li_ [class_ "pages"] $ do
               let meta = getMeta src
-              b_ $ with a_ [href_ (routeUrl $ Some r)] $ toHtml $ title meta
+              b_ $ with a_ [href_ (Rib.routeUrl $ Some r)] $ toHtml $ title meta
               maybe mempty renderMarkdown $ description meta
         Route_Article _ :/ src ->
           with article_ [class_ "post"] $ do
