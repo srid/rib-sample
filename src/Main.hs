@@ -19,6 +19,7 @@ import Data.Aeson (FromJSON, fromJSON)
 import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
 import Data.Text (Text)
+import qualified Data.Text.Lazy as TL
 import Development.Shake
 import Dhall.TH
 import GHC.Generics (Generic)
@@ -35,15 +36,23 @@ import Rib.Route
 -- The `a` parameter specifies the data (typically Markdown document) used to
 -- generated the final page text.
 data Route a where
-  Route_Article :: Path Rel File -> Route MMark
-  Route_Index :: Route [(Route MMark, MMark)]
+  Route_Index :: Route ()
+  Route_Article :: ArticleRoute a -> Route a
+
+data ArticleRoute a where
+  ArticleRoute_Index :: ArticleRoute [(Route MMark, MMark)]
+  ArticleRoute_Article :: Path Rel File -> ArticleRoute MMark
 
 instance IsRoute Route where
   routeFile = \case
-    Some Route_Index ->
+    Route_Index ->
       pure [relfile|index.html|]
-    Some (Route_Article srcPath) ->
-      replaceExtension ".html" srcPath
+    Route_Article r ->
+      fmap ([reldir|article|] </>) $ case r of
+        ArticleRoute_Article srcPath ->
+          replaceExtension ".html" srcPath
+        ArticleRoute_Index ->
+          pure [relfile|index.html|]
 
 -- | The "Config" type generated from the Dhall type.
 --
@@ -75,45 +84,53 @@ generateSite = do
     Dhall.parse
       [[relfile|src-dhall/Config.dhall|]]
       [relfile|config.dhall|]
-  let renderRoute = Lucid.renderText . renderPage config
+  let renderRoute :: Route a -> a -> TL.Text
+      renderRoute r a = Lucid.renderText $ renderPage config r a
   -- Build individual sources, generating .html for each.
   articles <-
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
-      let r = Route_Article srcPath
+      let r = Route_Article $ ArticleRoute_Article srcPath
       doc <- MMark.parse srcPath
-      writeRoute r $ renderRoute $ r :/ doc
+      writeRoute r $ renderRoute r doc
       pure (r, doc)
   -- Write an index.html linking to all articles.
-  writeRoute Route_Index $ renderRoute $ Route_Index :/ articles
+  let articlesRoute = Route_Article ArticleRoute_Index
+  writeRoute articlesRoute $ renderRoute articlesRoute articles
+  writeRoute Route_Index $ renderRoute Route_Index ()
 
 -- | Define your site HTML here
-renderPage :: Config -> R Route -> Html ()
-renderPage config route = with html_ [lang_ "en"] $ do
+renderPage :: Config -> Route a -> a -> Html ()
+renderPage config route val = with html_ [lang_ "en"] $ do
   head_ $ do
     meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
-    title_ $ routeTitle route
+    title_ $ routeTitle
     style_ [type_ "text/css"] $ C.render pageStyle
   body_ $ do
     with div_ [id_ "thesite"] $ do
       with div_ [class_ "header"] $
         with a_ [href_ "/"] "Back to Home"
+      h1_ routeTitle
       case route of
-        Route_Index :/ srcs -> do
-          h1_ $ toHtml $ siteTitle config
-          div_ $ forM_ srcs $ \(r, src) ->
+        Route_Index -> do
+          p_ $ do
+            "This site is work in progress. Meanwhile visit the "
+            with a_ [href_ $ routeUrl $ Route_Article ArticleRoute_Index] "articles"
+            " page."
+        Route_Article ArticleRoute_Index -> do
+          div_ $ forM_ val $ \(r, src) ->
             with li_ [class_ "pages"] $ do
               let meta = getMeta src
-              b_ $ with a_ [href_ (Rib.routeUrl $ Some r)] $ toHtml $ title meta
+              b_ $ with a_ [href_ (Rib.routeUrl r)] $ toHtml $ title meta
               maybe mempty renderMarkdown $ description meta
-        Route_Article _ :/ src ->
+        Route_Article (ArticleRoute_Article _) ->
           with article_ [class_ "post"] $ do
-            h1_ $ toHtml $ title $ getMeta src
-            MMark.render src
+            MMark.render val
   where
-    routeTitle :: R Route -> Html ()
-    routeTitle = \case
-      Route_Index :/ _ -> toHtml $ siteTitle config
-      Route_Article _ :/ src -> toHtml $ title $ getMeta src
+    routeTitle :: Html ()
+    routeTitle = case route of
+      Route_Index -> toHtml $ siteTitle config
+      Route_Article (ArticleRoute_Article _) -> toHtml $ title $ getMeta val
+      Route_Article ArticleRoute_Index -> "Articles"
     renderMarkdown =
       MMark.render . either (error . T.unpack) id . MMark.parsePure "<none>"
 
