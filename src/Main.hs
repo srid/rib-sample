@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,6 +17,7 @@ import qualified Clay as C
 import Control.Monad
 import Data.Aeson (FromJSON, fromJSON)
 import qualified Data.Aeson as Aeson
+import Data.Some
 import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
@@ -26,6 +29,7 @@ import Rib (MMark, Target)
 import qualified Rib
 import qualified Rib.Parser.Dhall as Dhall
 import qualified Rib.Parser.MMark as MMark
+import Route
 
 -- | This will be our type representing generated pages.
 --
@@ -34,6 +38,17 @@ import qualified Rib.Parser.MMark as MMark
 data Page
   = Page_Index [Target (Path Rel File) MMark]
   | Page_Single (Target (Path Rel File) MMark)
+
+data Route a where
+  Route_Article :: Path Rel File -> Route MMark
+  Route_Index :: Route [Route MMark]
+
+instance IsRoute Route where
+  routeFile = \case
+    Some Route_Index ->
+      pure [relfile|index.html|]
+    Some (Route_Article srcPath) ->
+      replaceExtension ".html" srcPath
 
 -- | The "Config" type generated from the Dhall type.
 --

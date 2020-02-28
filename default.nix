@@ -15,4 +15,14 @@ in {
 , ...
 }:
 
-import rib { inherit root name; }
+let 
+  fetchGH = repo: rev: builtins.fetchTarball "https://github.com/${repo}/archive/${rev}.tar.gz";
+  dsumSrc = fetchGH "mokus0/dependent-sum" "5ab6d81";
+  source-overrides = {
+    dependent-sum = dsumSrc + "/dependent-sum";
+    dependent-sum-template = dsumSrc + "/dependent-sum-template";
+    some = fetchGH "phadej/some" "7e2a9ef5352097954a3a416a5ef12bc35b0d53db"; # "1998df3";
+  };
+in import rib { 
+  inherit root name source-overrides; 
+}

@@ -24,3 +24,6 @@ executable rib-sample
         rib ^>=0.7,
         shake,
         text,
+        -- Move these to rib
+        dependent-sum,
+        exceptions
