@@ -6,9 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
@@ -28,7 +26,6 @@ import Rib (IsRoute, MMark)
 import qualified Rib
 import qualified Rib.Parser.Dhall as Dhall
 import qualified Rib.Parser.MMark as MMark
-import Rib.Route
 
 -- | Route corresponding to each generated static page.
 --
@@ -87,7 +84,7 @@ generateSite = do
       [[relfile|src-dhall/Config.dhall|]]
       [relfile|config.dhall|]
   let writeHtmlRoute :: Route a -> a -> Action ()
-      writeHtmlRoute r = writeRoute r . Lucid.renderText . renderPage config r
+      writeHtmlRoute r = Rib.writeRoute r . Lucid.renderText . renderPage config r
   -- Build individual sources, generating .html for each.
   articles <-
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
@@ -114,7 +111,7 @@ renderPage config route val = with html_ [lang_ "en"] $ do
         Route_Index ->
           p_ $ do
             "This site is work in progress. Meanwhile visit the "
-            with a_ [href_ $ routeUrl $ Route_Article ArticleRoute_Index] "articles"
+            with a_ [href_ $ Rib.routeUrl $ Route_Article ArticleRoute_Index] "articles"
             " page."
         Route_Article ArticleRoute_Index ->
           div_ $ forM_ val $ \(r, src) ->
