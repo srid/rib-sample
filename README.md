@@ -24,7 +24,7 @@ cachix use srid
 To build and run the site:
 
 ```bash
-nix-shell --run 'ghcid -T main --restart=src-dhall'
+nix-shell --run 'ghcid -T :main --restart=src-dhall'
 ```
 
 This launches a web server at http://localhost:8080 serving the statically
