@@ -40,3 +40,24 @@ achieved using the following command:
 # Assuming rib is cloned at ../rib
 nix-shell --arg rib ../rib --run 'ghcid -T ":main serve -p 9876"'
 ```
+
+## Building the executable
+
+A fully built executable can be produced using `nix-build`:
+
+```
+$ nix-build 
+...
+$ ./result/bin/rib-sample --help
+Usage: rib-sample COMMAND
+  Rib static site generator CLI
+
+Available options:
+  -h,--help                Show this help text
+
+Available commands:
+  generate                 Run one-off generation of static files
+  watch                    Watch the source directory, and generate when it
+                           changes
+  serve                    Like watch, but also starts a HTTP server
+```
