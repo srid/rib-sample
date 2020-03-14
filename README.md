@@ -24,7 +24,7 @@ cachix use srid
 To build and run the site:
 
 ```bash
-nix-shell --run 'ghcid -T :main --restart=src-dhall'
+nix-shell --run 'ghcid -T ":main serve"'
 ```
 
 This launches a web server at http://localhost:8080 serving the statically
@@ -38,5 +38,5 @@ achieved using the following command:
 
 ```bash
 # Assuming rib is cloned at ../rib
-nix-shell --arg rib ../rib --run 'ghcid -T ":main serve -p 9876" --restart=src-dhall'
+nix-shell --arg rib ../rib --run 'ghcid -T ":main serve -p 9876"'
 ```

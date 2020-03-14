@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -18,13 +17,11 @@ import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
 import Data.Text (Text)
 import Development.Shake
-import Dhall.TH
 import GHC.Generics (Generic)
 import Lucid
 import Path
 import Rib (IsRoute, MMark)
 import qualified Rib
-import qualified Rib.Parser.Dhall as Dhall
 import qualified Rib.Parser.MMark as MMark
 
 -- | Route corresponding to each generated static page.
@@ -53,13 +50,6 @@ instance IsRoute Route where
         ArticleRoute_Index ->
           pure [relfile|index.html|]
 
--- | The "Config" type generated from the Dhall type.
---
--- Use `Rib.Parser.Dhall` to parse it (see below).
-makeHaskellTypes
-  [ SingleConstructor "Config" "Config" "./src-dhall/Config.dhall"
-  ]
-
 -- | Main entry point to our generator.
 --
 -- `Rib.run` handles CLI arguments, and takes three parameters here.
@@ -78,13 +68,8 @@ generateSite :: Action ()
 generateSite = do
   -- Copy over the static files
   Rib.buildStaticFiles [[relfile|static/**|]]
-  -- Read the site config
-  config :: Config <-
-    Dhall.parse
-      [[relfile|src-dhall/Config.dhall|]]
-      [relfile|config.dhall|]
   let writeHtmlRoute :: Route a -> a -> Action ()
-      writeHtmlRoute r = Rib.writeRoute r . Lucid.renderText . renderPage config r
+      writeHtmlRoute r = Rib.writeRoute r . Lucid.renderText . renderPage r
   -- Build individual sources, generating .html for each.
   articles <-
     Rib.forEvery [[relfile|*.md|]] $ \srcPath -> do
@@ -96,38 +81,39 @@ generateSite = do
   writeHtmlRoute Route_Index ()
 
 -- | Define your site HTML here
-renderPage :: Config -> Route a -> a -> Html ()
-renderPage config route val = with html_ [lang_ "en"] $ do
+renderPage :: Route a -> a -> Html ()
+renderPage route val = html_ [lang_ "en"] $ do
   head_ $ do
     meta_ [httpEquiv_ "Content-Type", content_ "text/html; charset=utf-8"]
     title_ $ routeTitle
     style_ [type_ "text/css"] $ C.render pageStyle
   body_ $ do
-    with div_ [id_ "thesite"] $ do
-      with div_ [class_ "header"] $
-        with a_ [href_ "/"] "Back to Home"
+    div_ [id_ "thesite"] $ do
+      div_ [class_ "header"] $
+        a_ [href_ "/"] "Back to Home"
       h1_ routeTitle
       case route of
         Route_Index ->
           p_ $ do
-            "This site is work in progress. Meanwhile visit the "
-            with a_ [href_ $ Rib.routeUrl $ Route_Article ArticleRoute_Index] "articles"
+            "This is the main page. There is also the "
+            a_ [href_ $ Rib.routeUrl $ Route_Article ArticleRoute_Index] "articles"
             " page."
         Route_Article ArticleRoute_Index ->
           div_ $ forM_ val $ \(r, src) ->
-            with li_ [class_ "pages"] $ do
+            li_ [class_ "pages"] $ do
               let meta = getMeta src
-              b_ $ with a_ [href_ (Rib.routeUrl r)] $ toHtml $ title meta
-              maybe mempty renderMarkdown $ description meta
+              b_ $ a_ [href_ (Rib.routeUrl r)] $ toHtml $ title meta
+              renderMarkdown `mapM_` description meta
         Route_Article (ArticleRoute_Article _) ->
-          with article_ [class_ "post"] $ do
+          article_ $ do
             MMark.render val
   where
     routeTitle :: Html ()
     routeTitle = case route of
-      Route_Index -> toHtml $ siteTitle config
+      Route_Index -> "Rib sample site"
       Route_Article (ArticleRoute_Article _) -> toHtml $ title $ getMeta val
       Route_Article ArticleRoute_Index -> "Articles"
+    renderMarkdown :: Text -> Html ()
     renderMarkdown =
       MMark.render . either (error . T.unpack) id . MMark.parsePure "<none>"
 
