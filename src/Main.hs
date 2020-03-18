@@ -19,6 +19,7 @@ import Data.Text (Text)
 import Development.Shake
 import GHC.Generics (Generic)
 import Lucid
+import Main.Utf8
 import Path
 import Rib (IsRoute, MMark)
 import qualified Rib
@@ -53,7 +54,9 @@ instance IsRoute Route where
 -- In the shake action you would expect to use the utility functions
 -- provided by Rib to do the actual generation of your static site.
 main :: IO ()
-main = Rib.run [reldir|content|] [reldir|dest|] generateSite
+main =
+  withUtf8 $
+    Rib.run [reldir|content|] [reldir|dest|] generateSite
 
 -- | Shake action for generating the static site
 generateSite :: Action ()

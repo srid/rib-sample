@@ -23,3 +23,4 @@ executable rib-sample
         rib ^>=0.8,
         shake,
         text,
+        with-utf8
