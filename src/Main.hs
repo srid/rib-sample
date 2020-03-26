@@ -55,9 +55,7 @@ instance IsRoute Route where
 -- provided by Rib to do the actual generation of your static site.
 main :: IO ()
 main = withUtf8 $ do
-  let srcDir :: Path Rel Dir = [reldir|content|]
-      dstDir :: Path Rel Dir = [reldir|dest|]
-  Rib.run srcDir dstDir generateSite
+  Rib.run [reldir|content|] [reldir|dest|] generateSite
 
 -- | Shake action for generating the static site
 generateSite :: Action ()
