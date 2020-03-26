@@ -24,11 +24,11 @@ cachix use srid
 To build and run the site:
 
 ```bash
-nix-shell --run 'ghcid -T main'
+nix-shell --run 'ghcid -T ":main serve"'
 ```
 
 This launches a web server at http://localhost:8080 serving the statically
-generated content. Changing either `Main.hs` or the content in `./a` reloads everything.
+generated content. Changing either `Main.hs` or the content in `./content` reloads everything.
 
 ## Use a custom rib and port
 
@@ -39,4 +39,25 @@ achieved using the following command:
 ```bash
 # Assuming rib is cloned at ../rib
 nix-shell --arg rib ../rib --run 'ghcid -T ":main serve -p 9876"'
+```
+
+## Building the executable
+
+A fully built executable can be produced using `nix-build`:
+
+```
+$ nix-build 
+...
+$ ./result/bin/rib-sample --help
+Usage: rib-sample COMMAND
+  Rib static site generator CLI
+
+Available options:
+  -h,--help                Show this help text
+
+Available commands:
+  generate                 Run one-off generation of static files
+  watch                    Watch the source directory, and generate when it
+                           changes
+  serve                    Like watch, but also starts a HTTP server
 ```

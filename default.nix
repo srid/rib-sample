@@ -2,7 +2,7 @@ let
   # To upgrade rib, go to https://github.com/srid/rib/commits/master, select the
   # revision you would like to upgrade to and set it here. Consult rib's
   # ChangeLog.md to check any notes on API migration.
-  ribRevision = "a57e7ab7ef5b5b5fcbbf7b99b3edb33bfde5851f";
+  ribRevision = "8477880";
 
   inherit (import (builtins.fetchTarball "https://github.com/hercules-ci/gitignore/archive/7415c4f.tar.gz") { }) gitignoreSource;
 in {
@@ -15,4 +15,10 @@ in {
 , ...
 }:
 
-import rib { inherit root name; }
+let 
+  source-overrides = {
+    with-utf8 = builtins.fetchTarball "https://github.com/serokell/haskell-with-utf8/archive/v1.0.0.0.tar.gz";
+  };
+in import rib { 
+  inherit root name source-overrides; 
+}
