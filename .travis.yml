@@ -1,3 +1,7 @@
 language: nix
-script: nix-build 
+script: 
+  - nix-env -iA cachix -f https://cachix.org/api/v1/install
+  - cachix use srid
+  - nix-build 
+  - ./result/bin/rib-sample generate --full
 
