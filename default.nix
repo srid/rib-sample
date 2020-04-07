@@ -2,7 +2,7 @@ let
   # To upgrade rib, go to https://github.com/srid/rib/commits/master, select the
   # revision you would like to upgrade to and set it here. Consult rib's
   # ChangeLog.md to check any notes on API migration.
-  ribRevision = "8477880";
+  ribRevision = "13f5ba7a0daf973163a13712f131881e2c7a4108";
 
   inherit (import (builtins.fetchTarball "https://github.com/hercules-ci/gitignore/archive/7415c4f.tar.gz") { }) gitignoreSource;
 in {

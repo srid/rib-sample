@@ -30,7 +30,7 @@ nix-shell --run 'ghcid -T ":main serve"'
 This launches a web server at http://localhost:8080 serving the statically
 generated content. Changing either `Main.hs` or the content in `./content` reloads everything.
 
-## Use a custom rib and port
+### Use a custom rib and port
 
 You might have a local checkout of rib with certain modifications. And you might
 want to run ghcid with the server running at a different port. Both of this can
