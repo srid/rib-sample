@@ -24,7 +24,7 @@ cachix use srid
 To build and run the site:
 
 ```bash
-nix-shell --run 'ghcid -T ":main serve"'
+nix-shell --run 'ghcid -T ":main -wS"'
 ```
 
 This launches a web server at http://localhost:8080 serving the statically
@@ -38,7 +38,7 @@ achieved using the following command:
 
 ```bash
 # Assuming rib is cloned at ../rib
-nix-shell --arg rib ../rib --run 'ghcid -T ":main serve -p 9876"'
+nix-shell --arg rib ../rib --run 'ghcid -T ":main -wS"'
 ```
 
 ## Building the executable
@@ -49,15 +49,19 @@ A fully built executable can be produced using `nix-build`:
 $ nix-build 
 ...
 $ ./result/bin/rib-sample --help
-Usage: rib-sample COMMAND
-  Rib static site generator CLI
+Usage: rib-sample [--rebuild-all] [-w|--watch] [(-s|--serve [HOST]:PORT) | -S] 
+                  [--quiet] [--input-dir INPUTDIR] [--output-dir OUTPUTDIR]
+  Generate a static site at OUTPUTDIR using input from INPUTDIR
 
 Available options:
+  --rebuild-all            Rebuild all sources
+  -w,--watch               Watch for changes and regenerate
+  -s,--serve [HOST]:PORT   Run a HTTP server on the generated directory
+  -S                       Like `-s 127.0.0.1:8080`
+  --quiet                  Log nothing
+  --input-dir INPUTDIR     Directory containing the source files (default:
+                           content)
+  --output-dir OUTPUTDIR   Directory where files will be generated (default:
+                           dest)
   -h,--help                Show this help text
-
-Available commands:
-  generate                 Run one-off generation of static files
-  watch                    Watch the source directory, and generate when it
-                           changes
-  serve                    Like watch, but also starts a HTTP server
 ```

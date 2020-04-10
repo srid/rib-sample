@@ -19,8 +19,8 @@ executable rib-sample
         aeson,
         clay,
         lucid,
-        path,
-        rib ^>=0.8,
+        filepath,
+        rib ^>=0.9,
         shake,
         text,
         with-utf8
