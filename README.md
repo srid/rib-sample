@@ -38,7 +38,7 @@ achieved using the following command:
 
 ```bash
 # Assuming rib is cloned at ../rib
-nix-shell --arg rib ../rib --run 'ghcid -T ":main -wS"'
+nix-shell --arg rib ../rib --run 'ghcid -T ":main -ws :8081"'
 ```
 
 ## Building the executable
