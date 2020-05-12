@@ -20,7 +20,7 @@ executable rib-sample
         clay,
         lucid,
         filepath,
-        rib ^>=0.9,
+        rib ^>=0.11,
         shake,
         text,
         with-utf8
