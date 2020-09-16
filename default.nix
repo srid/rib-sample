@@ -2,10 +2,10 @@ let
   # To upgrade rib, go to https://github.com/srid/rib/commits/master, select the
   # revision you would like to upgrade to and set it here. Consult rib's
   # ChangeLog.md to check any notes on API migration.
-  ribRevision = "42bc7c3";
+  ribRevision = "9074581";
   ribSrc = builtins.fetchTarball {
     url = "https://github.com/srid/rib/archive/${ribRevision}.tar.gz";
-    sha256 = "1dph2nar6wfv9krkpcg6imdfjz3vzhwm5624x9kqbslsgvd9lcxx";
+    sha256 = "016n884gxckhsxc4hrv3p42h5ky3wx89bgbjbk9gvyrk486lbrvj";
   };
 
   gitignoreSrc = builtins.fetchTarball { 
