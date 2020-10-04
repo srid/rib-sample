@@ -8,4 +8,6 @@ Welcome to your [`Rib`](https://rib.srid.ca) generated site.
 
 > Naiveté is so vital to freedom. This is because even the strictest application of moralistic and ethicalistic injunctions will never lead to the clean clarity of the purity of living the perfection of the infinitude of this material universe.
 
---*Someone free*
+--*Richard*
+
+Read more on [actualists.org](https://www.actualists.org/).
