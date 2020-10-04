@@ -7,13 +7,13 @@
 
 module Main where
 
-import Clay ((?), Css, em, pc, px, sym)
+import Clay (Css, em, pc, px, sym, (?))
 import qualified Clay as C
 import Control.Monad
 import Data.Aeson (FromJSON, fromJSON)
 import qualified Data.Aeson as Aeson
-import qualified Data.Text as T
 import Data.Text (Text)
+import qualified Data.Text as T
 import Development.Shake
 import GHC.Generics (Generic)
 import Lucid
@@ -83,11 +83,12 @@ renderPage route val = html_ [lang_ "en"] $ do
     h1_ routeTitle
     case route of
       Route_Index ->
-        div_ $ forM_ val $ \(r, src) ->
-          li_ [class_ "pages"] $ do
-            let meta = getMeta src
-            b_ $ a_ [href_ (Rib.routeUrl r)] $ toHtml $ title meta
-            renderMarkdown `mapM_` description meta
+        div_ $
+          forM_ val $ \(r, src) ->
+            li_ [class_ "pages"] $ do
+              let meta = getMeta src
+              b_ $ a_ [href_ (Rib.routeUrl r)] $ toHtml $ title meta
+              renderMarkdown `mapM_` description meta
       Route_Article _ ->
         article_ $
           Pandoc.render val
@@ -102,23 +103,23 @@ renderPage route val = html_ [lang_ "en"] $ do
 
 -- | Define your site CSS here
 pageStyle :: Css
-pageStyle = C.body ? do
-  C.margin (em 4) (pc 20) (em 1) (pc 20)
-  ".header" ? do
-    C.marginBottom $ em 2
-  "li.pages" ? do
-    C.listStyleType C.none
-    C.marginTop $ em 1
-    "b" ? C.fontSize (em 1.2)
-    "p" ? sym C.margin (px 0)
+pageStyle =
+  C.body ? do
+    C.margin (em 4) (pc 20) (em 1) (pc 20)
+    ".header" ? do
+      C.marginBottom $ em 2
+    "li.pages" ? do
+      C.listStyleType C.none
+      C.marginTop $ em 1
+      "b" ? C.fontSize (em 1.2)
+      "p" ? sym C.margin (px 0)
 
 -- | Metadata in our markdown sources
-data SrcMeta
-  = SrcMeta
-      { title :: Text,
-        -- | Description is optional, hence `Maybe`
-        description :: Maybe Text
-      }
+data SrcMeta = SrcMeta
+  { title :: Text,
+    -- | Description is optional, hence `Maybe`
+    description :: Maybe Text
+  }
   deriving (Show, Eq, Generic, FromJSON)
 
 -- | Get metadata from Markdown's YAML block

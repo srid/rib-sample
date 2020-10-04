@@ -28,7 +28,7 @@ nix-shell --run 'ghcid -T ":main -wS"'
 ```
 
 This launches a web server at http://localhost:8080 serving the statically
-generated content. Changing either `./src/Main.hs` or the content in `./content` 
+generated content. Changing either `./src/Main.hs` or the content in `./content`
 reloads everything.
 
 ### Use a custom rib and port
@@ -42,15 +42,23 @@ achieved using the following command:
 nix-shell --arg rib ../rib --run 'ghcid -T ":main -ws :8081"'
 ```
 
+## IDE support
+
+The `.vscode` directory contains the necessary settings to work with a rib project.
+
+- Ensure that Nix is installed
+- Run `code .` to open the project in VSCode, and install the recommended extensions.
+  - The default settings have auto-format enabled.
+
 ## Building the executable
 
 A fully built executable can be produced using `nix-build`:
 
-```
+```text
 $ nix-build 
 ...
 $ ./result/bin/rib-sample --help
-Usage: rib-sample [--rebuild-all] [-w|--watch] [(-s|--serve [HOST]:PORT) | -S] 
+Usage: rib-sample [--rebuild-all] [-w|--watch] [(-s|--serve [HOST]:PORT) | -S]
                   [--quiet] [--input-dir INPUTDIR] [--output-dir OUTPUTDIR]
   Generate a static site at OUTPUTDIR using input from INPUTDIR
 
